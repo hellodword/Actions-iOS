@@ -1,0 +1,110 @@
+name: screenshot
+on:
+  workflow_dispatch:
+
+# https://github.com/SomeRandomiOSDev/ProtocolProxy/blob/efd6de3f42b2927d7547591754fc9e30e026b4bd/.github/workflows/xcodebuild.yml
+# https://github.com/SomeRandomiOSDev/ProtocolProxy
+# https://github.com/tianhaoz95/photochat/blob/36faf5ee62bd891030fd6265b0d86133e89e33e5/.github/workflows/thor.yml
+# https://github.com/Kyome22/UITestPractice/blob/f346370a312aa3d226f99649ec9a766d00095b44/.github/workflows/dispatch-workflow.yml
+# https://github.com/Kyome22/UITestPractice/blob/f346370a312aa3d226f99649ec9a766d00095b44/.github/workflows/dispatch-workflow.yml
+jobs:
+  build:
+    name: ${{ matrix.device }}
+    runs-on: macos-11
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - device: "iPhone 8"
+          - device: "iPhone 8 Plus"
+          - device: "iPhone 11"
+          - device: "iPhone 11 Pro"
+          - device: "iPhone 11 Pro Max"
+          - device: "iPhone SE (2nd generation)"
+          - device: "iPhone 12 mini"
+          - device: "iPhone 12"
+          - device: "iPhone 12 Pro"
+          - device: "iPhone 12 Pro Max"
+          - device: "iPhone 13 Pro"
+          - device: "iPhone 13 Pro Max"
+          - device: "iPhone 13 mini"
+          - device: "iPhone 13"
+          - device: "iPod touch (7th generation)"
+          - device: "iPad Pro (9.7-inch)"
+          - device: "iPad (7th generation)"
+          - device: "iPad Pro (11-inch) (2nd generation)"
+          - device: "iPad Pro (12.9-inch) (4th generation)"
+          - device: "iPad Air (3rd generation)"
+          - device: "iPad (8th generation)"
+          - device: "iPad (9th generation)"
+          - device: "iPad Air (4th generation)"
+          - device: "iPad Pro (11-inch) (3rd generation)"
+          - device: "iPad Pro (12.9-inch) (5th generation)"
+          - device: "iPad mini (6th generation)"
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v2
+      - name: file name
+        id: file_name
+        run: |
+          file_name=$(echo "recording_${{ matrix.device }}"| sed -e 's/[^A-Za-z0-9._-]/_/g')
+          echo "file_name $file_name"
+          echo "::set-output name=file_name::${file_name}"
+      - name: Install packages on MacOS
+        run: |
+          brew install tree
+          grep --version
+          brew install grep
+          PATH="/usr/local/opt/grep/libexec/gnubin:$PATH"
+          grep --version
+      - name: debug
+        run: |
+          xcrun simctl list devices available
+      - name: device id
+        id: device_id
+        run: |
+          PATH="/usr/local/opt/grep/libexec/gnubin:$PATH"
+          device_id=$(xcrun simctl list devices available | grep -oP "\Q${{ matrix.device }}\E \([\dA-F\-]{36}" | grep -oP '[\dA-F\-]{36}')
+          echo "device_id $device_id"
+          echo "::set-output name=device_id::${device_id}"
+      - name: debug
+        run: |
+          tree .
+      - name: boot simulator
+        run: |
+          xcrun simctl boot ${{ steps.device_id.outputs.device_id }}
+      - name: Build for Test
+        run: |
+          xcodebuild -version
+          xcodebuild clean build-for-testing \
+            -project UITestPractice.xcodeproj \
+            -scheme UITestPractice \
+            -destination "platform=iOS Simulator,name=${{ matrix.device }}" \
+            -derivedDataPath DerivedData
+      - name: UI tests
+        timeout-minutes: 30
+        run: |
+          xcrun simctl io booted recordVideo ${{ steps.file_name.outputs.file_name }}.mp4 &
+          sleep 5
+          export RECORDING_PID=${!}
+          echo "Recording process up with pid: ${RECORDING_PID}"
+          set +o errexit
+          xcodebuild test-without-building \
+            -project UITestPractice.xcodeproj \
+            -scheme UITestPractice \
+            -destination "platform=iOS Simulator,id=${{ steps.device_id.outputs.device_id }}" \
+            -derivedDataPath DerivedData \
+            -only-testing:UITestPracticeUITests
+          result_test=${?}
+          kill -SIGINT $RECORDING_PID
+          sleep 10
+          set -o errexit
+          if [ ! $result_test -eq 0 ]; then
+            echo "Failed Retry UITest 😱" >&2
+            exit 1
+          fi
+      - name: upload screenshot
+        uses: actions/upload-artifact@master
+        with:
+          name: ${{ steps.file_name.outputs.file_name }}
+          path: ${{ steps.file_name.outputs.file_name }}.mp4

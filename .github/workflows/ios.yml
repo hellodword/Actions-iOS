@@ -48,27 +48,26 @@ jobs:
         run: |
           xcrun simctl list devices available
           xcrun simctl list devices available | grep "iPhone [0-9]" | sort -rV | head -n 1 | sed -E 's/(.+)[ ]*\([^)]*\)[ ]*\([^)]*\)/\1/' | awk '{$1=$1};1'
-      - name: Default scheme
-        id: scheme
-        run: |
-          scheme_list=$(xcodebuild -list -json | tr -d "\n")
-          echo "scheme_list $scheme_list"
-          default=$(echo $scheme_list | ruby -e "require 'json'; puts JSON.parse(STDIN.gets)['project']['targets'][0]")
-          echo "default $default"
-          echo "::set-output name=default::${default}"
+      # - name: Default scheme
+      #   id: scheme
+      #   run: |
+      #     scheme_list=$(xcodebuild -list -json | tr -d "\n")
+      #     echo "scheme_list $scheme_list"
+      #     default=$(echo $scheme_list | ruby -e "require 'json'; puts JSON.parse(STDIN.gets)['project']['targets'][0]")
+      #     echo "default $default"
+      #     echo "::set-output name=default::${default}"
       - name: debug
         run: |
           tree .
       - name: Build iOS
         run: |
-          xcodebuild -project "ProtocolProxy.xcodeproj" -scheme ${{ steps.scheme.outputs.default }} -destination "generic/platform=iOS" -configuration Debug SKIP_SWIFTLINT=YES
+          xcodebuild -project "ProtocolProxy.xcodeproj" -scheme ProtocolProxy -destination "generic/platform=iOS" -configuration Debug SKIP_SWIFTLINT=YES
       - name: Build iOS Simulator
         run: |
-          xcodebuild -project "ProtocolProxy.xcodeproj" -scheme ${{ steps.scheme.outputs.default }} -destination "generic/platform=iOS Simulator" -configuration Debug SKIP_SWIFTLINT=YES
+          xcodebuild -project "ProtocolProxy.xcodeproj" -scheme ProtocolProxy -destination "generic/platform=iOS Simulator" -configuration Debug SKIP_SWIFTLINT=YES
       - name: debug
         run: |
           tree .
       - name: Test
         run: |
-          # IOS_SIM="iPhone 12 Pro" # Fallback Simulator
-          xcodebuild -project "ProtocolProxy.xcodeproj" -scheme ${{ steps.scheme.outputs.default }} -testPlan "ProtocolProxyTests" -destination "platform=iOS Simulator,name=${{ matrix.device }}" -configuration Debug SKIP_SWIFTLINT=YES ONLY_ACTIVE_ARCH=YES test
+          xcodebuild -project "ProtocolProxy.xcodeproj" -scheme ProtocolProxy -testPlan "ProtocolProxyTests" -destination "platform=iOS Simulator,name=${{ matrix.device }}" -configuration Debug SKIP_SWIFTLINT=YES ONLY_ACTIVE_ARCH=YES test
