@@ -15,32 +15,31 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - device: "iPhone 8"
-          - device: "iPhone 8 Plus"
-          - device: "iPhone 11"
-          - device: "iPhone 11 Pro"
-          - device: "iPhone 11 Pro Max"
-          - device: "iPhone SE (2nd generation)"
-          - device: "iPhone 12 mini"
-          - device: "iPhone 12"
-          - device: "iPhone 12 Pro"
-          - device: "iPhone 12 Pro Max"
-          - device: "iPhone 13 Pro"
-          - device: "iPhone 13 Pro Max"
-          - device: "iPhone 13 mini"
+          # - device: "iPhone 8"
+          # - device: "iPhone 8 Plus"
+          # - device: "iPhone 11"
+          # - device: "iPhone 11 Pro"
+          # - device: "iPhone 11 Pro Max"
+          # - device: "iPhone SE (2nd generation)"
+          # - device: "iPhone 12 mini"
+          # - device: "iPhone 12"
+          # - device: "iPhone 12 Pro"
+          # - device: "iPhone 12 Pro Max"
+          # - device: "iPhone 13 Pro"
+          # - device: "iPhone 13 Pro Max"
+          # - device: "iPhone 13 mini"
           - device: "iPhone 13"
-          - device: "iPod touch (7th generation)"
-          - device: "iPad Pro (9.7-inch)"
-          - device: "iPad (7th generation)"
-          - device: "iPad Pro (11-inch) (2nd generation)"
-          - device: "iPad Pro (12.9-inch) (4th generation)"
-          - device: "iPad Air (3rd generation)"
-          - device: "iPad (8th generation)"
-          - device: "iPad (9th generation)"
-          - device: "iPad Air (4th generation)"
-          - device: "iPad Pro (11-inch) (3rd generation)"
-          - device: "iPad Pro (12.9-inch) (5th generation)"
-          - device: "iPad mini (6th generation)"
+          # - device: "iPad Pro (9.7-inch)"
+          # - device: "iPad (7th generation)"
+          # - device: "iPad Pro (11-inch) (2nd generation)"
+          # - device: "iPad Pro (12.9-inch) (4th generation)"
+          # - device: "iPad Air (3rd generation)"
+          # - device: "iPad (8th generation)"
+          # - device: "iPad (9th generation)"
+          # - device: "iPad Air (4th generation)"
+          # - device: "iPad Pro (11-inch) (3rd generation)"
+          # - device: "iPad Pro (12.9-inch) (5th generation)"
+          # - device: "iPad mini (6th generation)"
     steps:
       - name: Checkout Code
         uses: actions/checkout@v2
@@ -75,16 +74,19 @@ jobs:
           xcrun simctl boot ${{ steps.device_id.outputs.device_id }}
       - name: Build for Test
         run: |
+          cd UITestPractice
           xcodebuild -version
           xcodebuild clean build-for-testing \
             -project UITestPractice.xcodeproj \
             -scheme UITestPractice \
             -destination "platform=iOS Simulator,name=${{ matrix.device }}" \
-            -derivedDataPath DerivedData
+            -derivedDataPath DerivedData \
+            -configuration Debug SKIP_SWIFTLINT=YES
       - name: UI tests
         timeout-minutes: 30
         run: |
-          xcrun simctl io booted recordVideo ${{ steps.file_name.outputs.file_name }}.mp4 &
+          cd UITestPractice
+          xcrun simctl io booted recordVideo ../${{ steps.file_name.outputs.file_name }}.mp4 &
           sleep 5
           export RECORDING_PID=${!}
           echo "Recording process up with pid: ${RECORDING_PID}"
@@ -94,7 +96,8 @@ jobs:
             -scheme UITestPractice \
             -destination "platform=iOS Simulator,id=${{ steps.device_id.outputs.device_id }}" \
             -derivedDataPath DerivedData \
-            -only-testing:UITestPracticeUITests
+            -only-testing:UITestPracticeUITests \
+            -configuration Debug SKIP_SWIFTLINT=YES
           result_test=${?}
           kill -SIGINT $RECORDING_PID
           sleep 10
@@ -104,7 +107,7 @@ jobs:
             exit 1
           fi
       - name: upload screenshot
-        uses: actions/upload-artifact@master
+        uses: actions/upload-artifact@v2
         with:
           name: ${{ steps.file_name.outputs.file_name }}
           path: ${{ steps.file_name.outputs.file_name }}.mp4
