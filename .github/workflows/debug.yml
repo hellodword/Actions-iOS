@@ -1,0 +1,16 @@
+name: debug
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-11
+    steps:
+      - run: |
+          mkdir xcode && cd xcode
+          swift package init --type executable
+          swift package generate-xcodeproj
+      - uses: actions/upload-artifact@v2
+        with:
+          name: xcode
+          path: xcode/
